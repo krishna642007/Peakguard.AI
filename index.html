@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PeakGuard — Peak-Demand Capacity Simulator</title>
+  <meta name="description" content="Synthetic workload simulation comparing legacy autoscaling with scenario-aware PeakGuard capacity management under latency and availability SLOs.">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- Top Navbar -->
+  <header class="navbar">
+    <div class="brand-container">
+      <div class="brand-logo">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-title">PeakGuard</div>
+        <div class="brand-subtitle">Capacity & SLO Simulator</div>
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <div class="status-badge" id="statusBadge">
+        <div class="pulse-dot"></div>
+        <span>SLO Compliant</span>
+      </div>
+      <button class="btn-secondary" id="downloadCsvBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+        </svg>
+        Download CSV
+      </button>
+      <button class="btn-primary" id="runSimBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+        Run Simulation
+      </button>
+    </div>
+  </header>
+
+  <!-- Main App Layout -->
+  <main class="app-container">
+    
+    <!-- Sidebar Control Panel -->
+    <aside class="sidebar">
+      
+      <!-- Workload Scenario Selector -->
+      <section class="glass-card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+            Workload Scenario
+          </h2>
+        </div>
+        <div class="scenario-grid">
+          <button class="scenario-btn active" data-scenario="scheduled_sale">
+            <span class="scen-icon">🏷️</span>
+            <span>Scheduled Sale</span>
+          </button>
+          <button class="scenario-btn" data-scenario="sudden_spike">
+            <span class="scen-icon">⚡</span>
+            <span>Sudden Spike</span>
+          </button>
+          <button class="scenario-btn" data-scenario="worker_loss">
+            <span class="scen-icon">⚠️</span>
+            <span>Worker Loss</span>
+          </button>
+          <button class="scenario-btn" data-scenario="normal_day">
+            <span class="scen-icon">☀️</span>
+            <span>Normal Day</span>
+          </button>
+        </div>
+        <div class="scenario-desc" id="scenarioDesc">
+          <strong>Scheduled Flash Sale:</strong> 5.0x traffic surge starting at T+15m for 10 min. Known event allows pre-scaling.
+        </div>
+      </section>
+
+      <!-- Capacity Assumptions & Sliders -->
+      <section class="glass-card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            Capacity Parameters
+          </h2>
+          <button class="btn-secondary" id="resetParamsBtn" style="padding: 0.2rem 0.5rem; font-size: 0.72rem;">Reset</button>
+        </div>
+
+        <div class="slider-group">
+          
+          <div class="slider-item">
+            <div class="slider-header">
+              <span class="slider-label">Starting Workers</span>
+              <span class="slider-value" id="valStartWorkers">4</span>
+            </div>
+            <input type="range" id="sliderStartWorkers" min="1" max="10" value="4">
+          </div>
+
+          <div class="slider-item">
+            <div class="slider-header">
+              <span class="slider-label">Fleet Cap (Max Workers)</span>
+              <span class="slider-value" id="valMaxWorkers">20</span>
+            </div>
+            <input type="range" id="sliderMaxWorkers" min="5" max="40" value="20">
+          </div>
+
+          <div class="slider-item">
+            <div class="slider-header">
+              <span class="slider-label">Worker TPS Capacity</span>
+              <span class="slider-value" id="valWorkerTps">30</span>
+            </div>
+            <input type="range" id="sliderWorkerTps" min="10" max="60" value="30">
+          </div>
+
+          <div class="slider-item">
+            <div class="slider-header">
+              <span class="slider-label">Scale-Out Warmup (sec)</span>
+              <span class="slider-value" id="valWarmupS">120 s</span>
+            </div>
+            <input type="range" id="sliderWarmupS" min="0" max="300" step="30" value="120">
+          </div>
+
+        </div>
+      </section>
+
+      <!-- System SLO Specs -->
+      <section class="glass-card" style="padding: 1rem;">
+        <div style="font-size: 0.78rem; color: var(--text-dim); display: flex; flex-direction: column; gap: 0.4rem;">
+          <div style="display: flex; justify-content: space-between;">
+            <span>Latency Target SLO:</span>
+            <strong style="color: var(--text-main);">&le; 300 ms</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span>Availability Target SLO:</span>
+            <strong style="color: var(--text-main);">&ge; 99.90%</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span>Timeout Threshold:</span>
+            <strong style="color: var(--text-main);">1000 ms</strong>
+          </div>
+        </div>
+      </section>
+
+    </aside>
+
+    <!-- Main Content Dashboard -->
+    <section class="main-panel">
+
+      <!-- Side-by-Side KPI Cards: Legacy vs PeakGuard -->
+      <div class="kpi-section">
+        
+        <!-- Legacy Policy KPI Card -->
+        <article class="glass-card policy-card legacy">
+          <div class="policy-title-row">
+            <div class="policy-name">
+              <span>Legacy Autoscaling</span>
+            </div>
+            <span class="policy-tag">Reactive Util</span>
+          </div>
+
+          <div class="metrics-grid">
+            <div class="metric-box">
+              <div class="metric-label">Availability</div>
+              <div class="metric-val" id="legacyAvail">--%</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">P95 Latency</div>
+              <div class="metric-val" id="legacyP95">-- ms</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">SLO Breach</div>
+              <div class="metric-val" id="legacyBreach">-- min</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Worker Min</div>
+              <div class="metric-val val-neutral" id="legacyWorkerMin">--</div>
+            </div>
+          </div>
+
+          <div class="policy-subtext">
+            <span>Failed: <strong id="legacyFailed" style="color: var(--rose);">0</strong> / <span id="legacyArrived">0</span></span>
+            <span>Max Queue: <strong id="legacyMaxQueue" style="color: var(--text-main);">0</strong></span>
+          </div>
+        </article>
+
+        <!-- PeakGuard Policy KPI Card -->
+        <article class="glass-card policy-card peakguard">
+          <div class="policy-title-row">
+            <div class="policy-name">
+              <span>PeakGuard Scaling</span>
+            </div>
+            <span class="policy-tag">Scenario Aware</span>
+          </div>
+
+          <div class="metrics-grid">
+            <div class="metric-box">
+              <div class="metric-label">Availability</div>
+              <div class="metric-val val-pass" id="pgAvail">--%</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">P95 Latency</div>
+              <div class="metric-val val-pass" id="pgP95">-- ms</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">SLO Breach</div>
+              <div class="metric-val val-pass" id="pgBreach">-- min</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Worker Min</div>
+              <div class="metric-val val-accent" id="pgWorkerMin">--</div>
+            </div>
+          </div>
+
+          <div class="policy-subtext">
+            <span>Failed: <strong id="pgFailed" style="color: var(--emerald);">0</strong> / <span id="pgArrived">0</span></span>
+            <span>Max Queue: <strong id="pgMaxQueue" style="color: var(--text-main);">0</strong></span>
+          </div>
+        </article>
+
+      </div>
+
+      <!-- Timeline Chart Visualizations -->
+      <section class="glass-card charts-card">
+        <div class="card-header" style="margin-bottom: 0;">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+            60-Minute Workload & Capacity Timelines
+          </h2>
+          <div class="chart-tabs">
+            <button class="tab-btn active" data-metric="demand_capacity">Demand vs Capacity</button>
+            <button class="tab-btn" data-metric="queue">Queue Depth</button>
+            <button class="tab-btn" data-metric="latency">Latency vs SLO</button>
+          </div>
+        </div>
+
+        <div class="chart-container-grid">
+          
+          <div class="chart-box">
+            <div class="chart-box-title">
+              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--rose);"></span>
+              Legacy Policy Timeline
+            </div>
+            <div class="canvas-wrapper">
+              <canvas id="chartLegacy"></canvas>
+            </div>
+          </div>
+
+          <div class="chart-box">
+            <div class="chart-box-title">
+              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--emerald);"></span>
+              PeakGuard Policy Timeline
+            </div>
+            <div class="canvas-wrapper">
+              <canvas id="chartPeakGuard"></canvas>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Migration & Rollback Control Center -->
+      <section class="glass-card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            Migration & Guardrail Rollback Center
+          </h2>
+        </div>
+
+        <div class="canary-grid">
+          <div class="canary-controls">
+            <div class="mode-banner">
+              <div class="mode-banner-label">Current Operating State</div>
+              <div class="mode-banner-val" id="canaryModeText">Legacy active / PeakGuard shadow</div>
+            </div>
+            <button class="btn-canary" id="promoteCanaryBtn">
+              Promote to Canary (10% Traffic)
+            </button>
+            <button class="btn-rollback" id="rollbackBtn">
+              ROLLBACK to Legacy Policy
+            </button>
+            <div style="font-size: 0.72rem; color: var(--text-dim); line-height: 1.3;">
+              <strong>Auto-rollback guardrails:</strong> Triggers if P95 &gt; 300ms for 3 consecutive min or availability &lt; 99.9%.
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.5rem;">Audit Trail & Event Log</div>
+            <div class="audit-list" id="auditFeed">
+              <!-- Audit events rendered dynamically -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sensitivity Analysis Matrix -->
+      <section class="glass-card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="20" x2="18" y2="10"></line>
+              <line x1="12" y1="20" x2="12" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+            Capacity Sensitivity Analysis
+          </h2>
+          <button class="btn-secondary" id="loadSensitivityBtn">Refresh Sensitivity Matrix</button>
+        </div>
+
+        <div class="sensitivity-table-container">
+          <table class="custom-table" id="sensitivityTable">
+            <thead>
+              <tr>
+                <th>Variable</th>
+                <th>Tested Value</th>
+                <th>Scenario</th>
+                <th>Policy</th>
+                <th>Availability</th>
+                <th>P95 Latency</th>
+                <th>SLO Breach</th>
+                <th>SLO Met</th>
+              </tr>
+            </thead>
+            <tbody id="sensitivityTbody">
+              <!-- Dynamic matrix rows -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

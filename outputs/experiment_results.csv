@@ -1,0 +1,9 @@
+scenario,policy,availability,p95_latency,max_queue,breach_minutes,worker_minutes,failed,arrived
+normal_day,Legacy,100.0,113.0,0,0.0,284.5,0,323808
+normal_day,PeakGuard,100.0,113.0,0,0.0,298.0,0,323808
+scheduled_sale,Legacy,67.94,1004.2,162,10.0,358.5,173195,540254
+scheduled_sale,PeakGuard,100.0,113.0,0,0.0,578.3,0,540254
+sudden_spike,Legacy,74.88,997.6,162,5.0,351.5,115303,459029
+sudden_spike,PeakGuard,87.37,520.6,367,3.0,437.3,57991,459029
+worker_loss,Legacy,80.78,1004.2,135,10.0,338.5,83026,432031
+worker_loss,PeakGuard,100.0,115.9,106,1.2,437.3,0,432031
